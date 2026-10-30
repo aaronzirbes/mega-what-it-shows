@@ -1,0 +1,68 @@
+---
+layout: runbook
+title: '#4471 · what it holds: three problems, three tickets'
+owner: Aaron J. Zirbes
+status: draft
+reviewed: 2026-10-29
+signature: 'v1.eyJzdWIiOiI2NDcyIiwiYXVkIjoiY2hhbGxlbmdlOndoYXQtaXQtc2hvd3MiLCJpYXQiOjE3OTMzMzU5MTcsImV4cCI6MTc5MzQyMjMxN30.rdAD3hIZAAt2-MdbS0TTMUK0TXz9WlGK50NDp_VDQWM'
+---
+
+<script>
+  import ProblemTable from '#lib/kb/ProblemTable.svelte';
+  import Callout from '#lib/kb/Callout.svelte';
+  import RenderStamp from '#lib/kb/RenderStamp.svelte';
+
+  const repo = 'https://github.com/aaronzirbes/mega-what-it-shows/issues';
+  const tickets = { parser: `${repo}/1`, hint: `${repo}/2`, shift: `${repo}/3` };
+</script>
+
+[#4471](/kb/incidents/4471) says one bug, one fix queued. The reports say three bugs. The queued
+parser fix closes only the first one.
+
+<Callout kind="warn">
+#4471 is not one issue. Each problem below has its own ticket and needs its own fix.
+</Callout>
+
+## The split
+
+<ProblemTable ticket={4471} {tickets} />
+
+## The three problems
+
+**`parser`: the shared parser reads every date month first.** A day-first tenant's dates come out
+with day and month swapped ("Booked for 2 December. The invite says 12 February."). Every tenant
+on file writes the day first, so every tenant has it, through the app, email and the booking-v2
+form. This is the bug the queued fix is for.
+
+**`hint`: the booking-v3 form tells day-first people to type month first.** Its date field prints
+`MM/DD/YYYY`, but the form reads the value the tenant's way, day first. People do what the hint
+says and get a swapped date. Only form reports from booking-v3 tenants have it. The parser fix
+does not touch the form, so these keep coming after it ships. Fix: print the tenant's own order
+under the field.
+
+**`shift`: the date moves by one day, not by months.** "Invite says Tuesday 12 May. Calendar says
+Monday 11 May." "Client in Lisbon got Tuesday. Client in Toronto got Monday." No day/month swap
+gives these dates. The pattern fits a date stored or sent as midnight and then shown in another
+time zone. The desk saw these
+([desk notes](https://github.com/aaronzirbes/mega-what-it-shows/blob/main/src/lib/data/desk-notes.json))
+but filed them under `parser` by tenant, so they would close with the wrong fix.
+
+## Why one ticket hid three
+
+- **Merged on subject.** [Decision 0001](/kb/decisions/0001-dedupe-by-subject) merges reports when
+  their subject lines match. "Wrong day on the invite" fits all three bugs, so all three landed
+  in one ticket.
+- **Intake tags guess from the browser.** The "intake tagged as" column shows that intake's
+  `hint` tag and the real cause disagree in both directions. The cause depends on the tenant's
+  locale and booking form ([causes.ts](https://github.com/aaronzirbes/mega-what-it-shows/blob/main/src/lib/kb/causes.ts)),
+  not on the reporter's browser.
+- **The export repeats reports.** Its pages overlap, so a raw row count is too high. The table
+  counts each report id once.
+
+## What to do
+
+1. Keep #4471 for `parser` only and close it when the parser fix ships.
+2. Work the `hint` and `shift` tickets apart from it: the parser fix does not close them.
+3. Replace decision 0001 with a new record: merge on cause (tenant and way in), not on subject.
+
+<RenderStamp {signature} />
